@@ -1,6 +1,7 @@
-metrics: https://manpages.opensuse.org/metrics.txt
-# The measurement under which the values are stored in InfluxDB
-measurement: manpages.opensuse.org
+# Required: URL of the metrics to scrape
+metrics: https://example/metrics
+# Required: The measurement under which the values are stored in InfluxDB
+measurement: prom_metrics
 # Optional: if specified, the value of this metric is used as timestamp
 # to store the data in the database, else the current time is used.
 # Helpful for jobs not running regular
@@ -13,9 +14,9 @@ avoid_duplicate: true
 interval: 6h
 influxdb:
   # machine on which influxdb runs on port 8086:
-  server: 172.17.0.1
+  server: <influxdb host>
   # Database or bucket or however it will be called in influxdb3...
-  database: docserv
+  database: <my-db> 
   # Optional, only used if a new database/bucket needs to be created
   # organization: <my-org>
   # If a token is required, you can specify it here (but be careful that you
