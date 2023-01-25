@@ -1,0 +1,24 @@
+metrics: https://manpages.opensuse.org/metrics.txt
+# The measurement under which the values are stored in InfluxDB
+measurement: manpages.opensuse.org
+# Optional: if specified, the value of this metric is used as timestamp
+# to store the data in the database, else the current time is used.
+# Helpful for jobs not running regular
+timestamp: last_successful_run
+# Optional: if true, the metrics are only stored if the timestamp
+# is newer
+avoid_duplicate: true
+# Optional, specifies the interval in which the metrics are fetched
+# default is 1 hour
+interval: 6h
+influxdb:
+  # machine on which influxdb runs on port 8086:
+  server: 172.17.0.1
+  # Database or bucket or however it will be called in influxdb3...
+  database: docserv
+  # Optional, only used if a new database/bucket needs to be created
+  # organization: <my-org>
+  # If a token is required, you can specify it here (but be careful that you
+  # don't commit it a public git repo or something similar! Or you can use
+  # an environment variable 'INFLUXDB_TOKEN'
+  # token: <token>
