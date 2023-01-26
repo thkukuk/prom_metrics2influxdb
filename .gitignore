@@ -4,7 +4,6 @@
 *.dll
 *.so
 *.dylib
-bin/prom_metrics2influxdb
 
 # Test binary, built with `go test -c`
 *.test
@@ -15,3 +14,4 @@ bin/prom_metrics2influxdb
 *~
 
 vendor/
+bin/
