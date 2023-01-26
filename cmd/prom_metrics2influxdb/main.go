@@ -153,8 +153,14 @@ func runCmd(cmd *cobra.Command, args []string) {
 
 		for k, v := range mf {
 			m := v.GetMetric()
-			// XXX m[0] -> can we have more/different index?
-			field[k] = *m[0].GetGauge().Value
+			for i := range m {
+				key := k
+				labels := m[i].GetLabel()
+				for l := range labels {
+					key = fmt.Sprintf("%s_%s:%s", key, *labels[l].Name, *labels[l].Value)
+				}
+				field[key] = *m[i].GetGauge().Value
+			}
 		}
 
 		timestamp := time.Now()
