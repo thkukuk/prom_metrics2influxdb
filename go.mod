@@ -3,7 +3,7 @@ module github.com/thkukuk/prom_metrics2influxdb
 go 1.18
 
 require (
-	github.com/influxdata/influxdb-client-go/v2 v2.12.1
+	github.com/influxdata/influxdb-client-go/v2 v2.12.2
 	github.com/prometheus/client_model v0.3.0
 	github.com/prometheus/common v0.39.0
 	github.com/spf13/cobra v1.6.1
