@@ -32,13 +32,15 @@ func WriteEntry(client influxdb2.Client, config InfluxDBConfig, measurement stri
 }
 
 func createDatabase(client influxdb2.Client, config *InfluxDBConfig) error {
-
+	if verbose {
+		log.Debug("Check if the database needs to be created...")
+	}
 	ctx := context.Background()
-	// Get Buckets API client
-	bucketsAPI := client.BucketsAPI()
 
-	bucket, err := bucketsAPI.FindBucketByName(ctx, config.Database)
-
+	bucket, err := client.BucketsAPI().FindBucketByName(ctx, config.Database)
+	if verbose && err != nil {
+		log.Debugf("Error finding bucket %q: %v", config.Database, err)
+	}
 	// so we found the database
 	if bucket != nil {
 		return nil
@@ -47,12 +49,15 @@ func createDatabase(client influxdb2.Client, config *InfluxDBConfig) error {
 	// Get organization that will own new bucket
 	org, err := client.OrganizationsAPI().FindOrganizationByName(ctx, config.Organization)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error finding organization %q: %v",
+			config.Organization, err)
 	}
 	// Create  a bucket with 1 day retention policy
-	_, err = bucketsAPI.CreateBucketWithName(ctx, org, config.Database, domain.RetentionRule{EverySeconds: 0})
+	_, err = client.BucketsAPI().CreateBucketWithName(ctx, org,
+		config.Database, domain.RetentionRule{EverySeconds: 0})
 	if err != nil {
-		return err
+		return fmt.Errorf("Error crating bucket %q: %v",
+			config.Database, err)
 	}
 
 	if !quiet {
@@ -78,9 +83,19 @@ func ConnectInfluxDB(config *InfluxDBConfig) (influxdb2.Client, error) {
 	client := influxdb2.NewClient(serverUrl, config.Token)
 	defer client.Close()
 
-	err := createDatabase(client, config)
+	health, err := client.Health(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("Cannot get health status: %v", err)
+	} else if health.Status == domain.HealthCheckStatusFail {
+		return nil, fmt.Errorf("Database not healthy: %v", health)
+	}
+
+	err = createDatabase(client, config)
 	if err != nil {
 		log.Warnf("Cannot verify database, maybe InfluxDB v1 is used? Please make sure it exists.")
+		if verbose {
+			log.Debug(err)
+		}
 	}
 
 	return client, nil
