@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	log "github.com/thkukuk/prom_metrics2influxdb/pkg/logger"
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
@@ -26,8 +27,6 @@ var (
         Version = "unreleased"
         quiet   = false
         verbose = false
-        logger  = log.New(os.Stdout, "", log.LstdFlags)
-        logerr  = log.New(os.Stderr, "", log.LstdFlags)
 	configFile = "config.yaml"
         Config ConfigType
         db influxdb2.Client
@@ -111,13 +110,13 @@ func main() {
 func runCmd(cmd *cobra.Command, args []string) {
 
 	if !quiet {
-		logger.Printf("Prometheus Metrics to InfluxDB %s is starting...",
+		log.Infof("Prometheus Metrics to InfluxDB %s is starting...",
 			Version)
-                logger.Printf("Read yaml config %q\n", configFile)
+                log.Infof("Read yaml config %q\n", configFile)
         }
         Config, err := read_yaml_config(configFile)
         if err != nil {
-                logerr.Fatalf("Could not load config: %v", err)
+                log.Fatalf("Could not load config: %v", err)
         }
 
 	if Config.InfluxDB != nil {
@@ -126,10 +125,10 @@ func runCmd(cmd *cobra.Command, args []string) {
                 }
                 db, err = ConnectInfluxDB(Config.InfluxDB)
                 if err != nil {
-                        logerr.Fatalf("Cannot connect to InfluxDB: %v", err)
+                        log.Fatalf("Cannot connect to InfluxDB: %v", err)
                 }
         } else {
-                logger.Fatal("No InfluxDB server specified!")
+                log.Fatal("No InfluxDB server specified!")
         }
 
 	if Config.Interval == 0 {
@@ -140,7 +139,7 @@ func runCmd(cmd *cobra.Command, args []string) {
 	for {
 		mf, err := parseMF(Config.Metrics)
 		if err != nil {
-			logerr.Fatalf("Could not load metrics %q: %v",
+			log.Fatalf("Could not load metrics %q: %v",
 				Config.Metrics, err)
 		}
 
@@ -167,35 +166,36 @@ func runCmd(cmd *cobra.Command, args []string) {
 		if len(Config.Timestamp) > 0 {
 			t, ok := field[Config.Timestamp].(float64)
 			if !ok {
-				logerr.Printf("What is timestamp? %v",
+				log.Errorf("Unknown format for timestamp %v",
 					field[Config.Timestamp])
+			} else {
+				timestamp  = time.Unix(int64(t), 0)
 			}
-			timestamp  = time.Unix(int64(t), 0)
 		}
 
 		if Config.AvoidDuplicate && !timestamp.After(old_timestamp) {
 			if verbose {
-				logger.Printf("Skipped, %v is not newer than %v",
+				log.Debugf("Skipped, %v is not newer than %v",
 					timestamp, old_timestamp)
 			}
 		} else {
 			if verbose {
-				logger.Printf("WriteEntry(%s, %v, %v, %v)",
+				log.Debugf("WriteEntry(%s, %v, %v, %v)",
 					Config.Measurement, tags, field, timestamp)
 			}
 
 			err = WriteEntry(db, *Config.InfluxDB, Config.Measurement,
 				tags, field, timestamp)
 			if err != nil {
-				logerr.Printf("Writing to db %q failed: %v",
+				log.Errorf("Writing to db %q failed: %v",
 					Config.InfluxDB.Database, err)
+			} else {
+				old_timestamp = timestamp
 			}
-
-			old_timestamp = timestamp
 		}
 
 		if verbose {
-			logger.Printf("sleep %s", Config.Interval)
+			log.Debugf("sleep %s", Config.Interval)
 		}
 		time.Sleep(Config.Interval)
 	}

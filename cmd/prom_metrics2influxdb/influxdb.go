@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	log "github.com/thkukuk/prom_metrics2influxdb/pkg/logger"
 	"github.com/influxdata/influxdb-client-go/v2/domain"
 	"github.com/influxdata/influxdb-client-go/v2"
 )
@@ -54,7 +55,9 @@ func createDatabase(client influxdb2.Client, config *InfluxDBConfig) error {
 		return err
 	}
 
-	logger.Printf("Created database %q in organization %q\n", config.Database, config.Organization)
+	if !quiet {
+		log.Infof("Created database %q in organization %q\n", config.Database, config.Organization)
+	}
 	return nil
 }
 
@@ -77,7 +80,7 @@ func ConnectInfluxDB(config *InfluxDBConfig) (influxdb2.Client, error) {
 
 	err := createDatabase(client, config)
 	if err != nil {
-		logger.Printf("Cannot verify database, maybe InfluxDB v1 is used? Please make sure it exists.")
+		log.Warnf("Cannot verify database, maybe InfluxDB v1 is used? Please make sure it exists.")
 	}
 
 	return client, nil
