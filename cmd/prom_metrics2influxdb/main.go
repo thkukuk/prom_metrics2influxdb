@@ -86,6 +86,67 @@ func parseMF(url string) (map[string]*dto.MetricFamily, error) {
     return mf, nil
 }
 
+func scrapAndSave(config ConfigType, old_timestamp time.Time) (time.Time) {
+	mf, err := parseMF(config.Metrics)
+	if err != nil {
+		log.Errorf("Could not load metrics %q: %v",
+			config.Metrics, err)
+		return old_timestamp
+	}
+
+	var tags = make(map[string]string, len(config.ConstantTags))
+	var field = make(map[string]interface{}, len(mf))
+
+	for v, k := range config.ConstantTags {
+		tags[k] = v
+	}
+
+	for k, v := range mf {
+		m := v.GetMetric()
+		for i := range m {
+			key := k
+			labels := m[i].GetLabel()
+			for l := range labels {
+				key = fmt.Sprintf("%s_%s:%s", key, *labels[l].Name, *labels[l].Value)
+			}
+			field[key] = *m[i].GetGauge().Value
+		}
+	}
+
+	timestamp := time.Now()
+	if len(config.Timestamp) > 0 {
+		t, ok := field[config.Timestamp].(float64)
+		if !ok {
+			log.Errorf("Unknown format for timestamp %v",
+				field[config.Timestamp])
+		} else {
+			timestamp  = time.Unix(int64(t), 0)
+		}
+	}
+
+	if config.AvoidDuplicate && !timestamp.After(old_timestamp) {
+		if verbose {
+			log.Debugf("Skipped, %v is not newer than %v",
+				timestamp, old_timestamp)
+		}
+		return old_timestamp
+	}
+
+	if verbose {
+		log.Debugf("WriteEntry(%s, %v, %v, %v)",
+			config.Measurement, tags, field, timestamp)
+	}
+
+	err = WriteEntry(db, *config.InfluxDB, config.Measurement,
+		tags, field, timestamp)
+	if err != nil {
+		log.Errorf("Writing to db %q failed: %v",
+			config.InfluxDB.Database, err)
+		return old_timestamp
+	}
+	return timestamp
+}
+
 func main() {
         cmd := &cobra.Command{
                 Use:   "prom_metrics2influxdb",
@@ -137,63 +198,7 @@ func runCmd(cmd *cobra.Command, args []string) {
 
 	var old_timestamp time.Time
 	for {
-		mf, err := parseMF(Config.Metrics)
-		if err != nil {
-			log.Fatalf("Could not load metrics %q: %v",
-				Config.Metrics, err)
-		}
-
-		var tags = make(map[string]string, len(Config.ConstantTags))
-		var field = make(map[string]interface{}, len(mf))
-
-		for v, k := range Config.ConstantTags {
-			tags[k] = v
-		}
-
-		for k, v := range mf {
-			m := v.GetMetric()
-			for i := range m {
-				key := k
-				labels := m[i].GetLabel()
-				for l := range labels {
-					key = fmt.Sprintf("%s_%s:%s", key, *labels[l].Name, *labels[l].Value)
-				}
-				field[key] = *m[i].GetGauge().Value
-			}
-		}
-
-		timestamp := time.Now()
-		if len(Config.Timestamp) > 0 {
-			t, ok := field[Config.Timestamp].(float64)
-			if !ok {
-				log.Errorf("Unknown format for timestamp %v",
-					field[Config.Timestamp])
-			} else {
-				timestamp  = time.Unix(int64(t), 0)
-			}
-		}
-
-		if Config.AvoidDuplicate && !timestamp.After(old_timestamp) {
-			if verbose {
-				log.Debugf("Skipped, %v is not newer than %v",
-					timestamp, old_timestamp)
-			}
-		} else {
-			if verbose {
-				log.Debugf("WriteEntry(%s, %v, %v, %v)",
-					Config.Measurement, tags, field, timestamp)
-			}
-
-			err = WriteEntry(db, *Config.InfluxDB, Config.Measurement,
-				tags, field, timestamp)
-			if err != nil {
-				log.Errorf("Writing to db %q failed: %v",
-					Config.InfluxDB.Database, err)
-			} else {
-				old_timestamp = timestamp
-			}
-		}
-
+		old_timestamp = scrapAndSave(Config, old_timestamp)
 		if verbose {
 			log.Debugf("sleep %s", Config.Interval)
 		}
