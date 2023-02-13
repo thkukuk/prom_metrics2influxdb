@@ -72,6 +72,8 @@ avoid_duplicate: true
 # Optional, specifies the interval in which the metrics are fetched
 # default is 1 hour
 interval: 6h
+# Optional, enables verbose mode, overrides commandline option
+verbose: true
 influxdb:
   # machine on which influxdb runs on port 8086:
   server: <influxdb host>

@@ -8,6 +8,7 @@ require (
 	github.com/prometheus/common v0.39.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
+	github.com/thkukuk/mqtt-exporter v0.3.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/thkukuk/prom_metrics2influxdb/pkg/logger"
+	log "github.com/thkukuk/mqtt-exporter/pkg/logger"
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
@@ -33,9 +33,10 @@ var (
 )
 
 type ConfigType struct {
+	Verbose         *bool             `yaml:"verbose,omitempty"`
 	Metrics         string            `yaml:"metrics"`
 	Measurement     string            `yaml:"measurement"`
-	Timestamp       string            `yaml:"timestamp,omitempty"`
+	Timestamp       *string           `yaml:"timestamp,omitempty"`
 	Interval        time.Duration     `yaml:"interval"`
 	AvoidDuplicate  bool              `yaml:"avoid_duplicate"`
 	ConstantTags    map[string]string `yaml:"const_tags"`
@@ -114,11 +115,11 @@ func scrapAndSave(config ConfigType, old_timestamp time.Time) (time.Time) {
 	}
 
 	timestamp := time.Now()
-	if len(config.Timestamp) > 0 {
-		t, ok := field[config.Timestamp].(float64)
+	if config.Timestamp != nil && len(*config.Timestamp) > 0 {
+		t, ok := field[*config.Timestamp].(float64)
 		if !ok {
 			log.Errorf("Unknown format for timestamp %v",
-				field[config.Timestamp])
+				field[*config.Timestamp])
 		} else {
 			timestamp  = time.Unix(int64(t), 0)
 		}
@@ -178,6 +179,10 @@ func runCmd(cmd *cobra.Command, args []string) {
         Config, err := read_yaml_config(configFile)
         if err != nil {
                 log.Fatalf("Could not load config: %v", err)
+        }
+
+        if Config.Verbose != nil {
+                verbose = *Config.Verbose
         }
 
 	if Config.InfluxDB != nil {

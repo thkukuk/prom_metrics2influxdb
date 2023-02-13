@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	log "github.com/thkukuk/prom_metrics2influxdb/pkg/logger"
+	log "github.com/thkukuk/mqtt-exporter/pkg/logger"
 	"github.com/influxdata/influxdb-client-go/v2/domain"
 	"github.com/influxdata/influxdb-client-go/v2"
 )
